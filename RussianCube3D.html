@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>3D Russian Cube</title>
+	<style>
+		body{
+			margin:0;
+			height: 100%;
+		}
+		#canvas{
+			width: 100%;
+			height: 72%;
+		}
+		#direction div,#fn div,#transform div{
+			box-shadow: 10px 10px 5px #222;
+		}
+		#button_plane{
+			height: 28%;
+			background: #333;
+			display: flex;
+		}
+		#direction{
+			overflow: hidden;
+			position: relative;
+			width: 50%;
+		}
+		#direction div{
+			position: absolute;
+			background: #888;
+			border-radius: 50%;
+			transform:rotate(45deg)
+		}
+		#top{
+			bottom: 65%;
+		}
+		#bottom{
+			top:65%;
+		}
+
+		#left{
+			right: 65%
+		}
+		#right{
+			left: 65%
+		}
+
+
+		#right_plane{
+			width: 50%;
+			height: 100%;
+		}
+		#fn{
+			height: 30%;
+			display: flex;
+			align-items: center;
+			justify-content: space-around;
+		}
+		#fn div{
+			background-color: #888;
+			padding: 2%;
+			text-align: center;
+			color: #fff;
+			border-radius: 10%;
+		}
+		#transform{
+			height: 70%;
+			align-items: center;
+			justify-content: space-around;
+			display: flex;
+		}
+		#transform div{
+			text-align: center;
+			color: #fff;
+			border-radius: 10%;
+			background: #888;
+			margin: 5%;
+			width: 30%;
+			height: 30%;
+			align-items: center;
+			justify-content: space-around;
+			display: flex;
+		}
+		#canvas{
+			position: relative;
+		}
+		#score{
+			position: absolute;
+			top: 0;
+			left: 0;
+			background: #33a3dc;
+			color: #fff;
+			font-size: 16px;
+			padding: 5px;
+		}
+	</style>
+	<script src="./three.js"></script>
+	<script src="./CellCube.js"></script>
+	<script src="./RussianCube.js"></script>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0,">
+</head>
+<body>
+	<div id="canvas"><span id="score">Score:0</span></div>
+	<div id="button_plane">
+		<div id="direction">
+			<div id="left"></div>
+			<div id="right"></div>
+			<div id="top"></div>
+			<div id="bottom"></div>
+		</div>
+		<div>
+			<p style="font-size:15px">Tastele WSAD sau cele 4 butoane din partea stanga a ecranului controlează direcția mișcării blocului.</p>
+			<p style="font-size:15px">SPACE sau butonul "accelerate" accelerează blocul.</p>
+			<p style="font-size:15px">Tragerea mouse-ului poate schimba perspectiva.</p>
+		</div>
+		<div>
+			<p style="font-size:15px">Butonul "pause" sau tasta 8 pune jocul pe pauză.</p>
+			<p style="font-size:15px">Butonul "projection" sau tasta 7 proiectează unde va ajunge blocul.</p>
+			<p style="font-size:15px">Butoanele "deformation" sau tastele 1, 2, 3 permit deformarea blocului in diferite sensuri/directii/unghiuri/poziții.</p>
+		</div>
+		<div id="right_plane">
+			<div id="fn">
+				<div id="pause">pause</div>
+				<div id="cast">projection</div>
+				<div id="acce">accelerate</div>
+			</div>
+			<div id="transform">
+				<div id="across">deformation</div>
+				<div id="row">deformation</div>
+				<div id="vertical">deformation</div>
+			</div>
+		</div>
+		
+	</div>
+	<script>
+		var arr=  [document.querySelector("#left"),document.querySelector("#right"),document.querySelector("#top"),document.querySelector("#bottom"),document.querySelector("#pause"),document.querySelector("#cast"),document.querySelector("#across"),document.querySelector("#row"),document.querySelector("#vertical"),document.querySelector("#acce")],
+		keys = ["a","d","w","s","8","7","1","2","3"," "]
+		var oLeft=arr[0],oRight=arr[1],oTop=arr[2],oBottom=arr[3],oPause=arr[4],oCast=arr[5],oTrans1=arr[6],oTrans2=arr[7],oTrans3=arr[8]
+		document.body.style.height=window.innerHeight+"px"
+		function getStyle(obj,prop){
+			return parseInt(getComputedStyle(obj)[prop])
+		}
+
+		// Directional Control Button Responsive
+		var len =  getStyle(document.querySelector("#direction"),"width")<getStyle(document.querySelector("#direction"),"height")?getStyle(document.querySelector("#direction"),"width"):getStyle(document.querySelector("#direction"),"height")
+		oTop.style.width = oLeft.style.width = oBottom.style.width = oRight.style.width = oTop.style.height = oLeft.style.height = oBottom.style.height = oRight.style.height = len*0.26+"px"
+		oTop.style.left= oBottom.style.left = getStyle(document.querySelector("#direction"),"width")*0.5-0.13*len + "px"
+		oTop.style.bottom= oBottom.style.top = getStyle(document.querySelector("#direction"),"height")*0.5+0.13*len + "px"
+		oLeft.style.top= oRight.style.top = getStyle(document.querySelector("#direction"),"height")*0.5-0.13*len + "px"
+		oLeft.style.right= oRight.style.left = getStyle(document.querySelector("#direction"),"width")*0.5+0.13*len + "px"
+
+
+		// Create a scene
+		var scene = new THREE.Scene()
+		// Create a camera
+		var camera = new THREE.PerspectiveCamera(45, window.innerWidth/(window.innerHeight*0.72), 0.1, 1000)
+		camera.position.set(25,15,15)
+		camera.lookAt(new THREE.Vector3(0,0,0))
+		// Create a base plane
+		var plane = new THREE.Mesh(new THREE.PlaneGeometry(7,7), new THREE.MeshBasicMaterial({color:0x888888}))
+		plane.rotation.x = -Math.PI*0.5
+		plane.position.set(0,-10.5,0)
+
+		// Create a container
+		var oCantainerGeo = new THREE.CubeGeometry(7,21,7)
+		var oCantainerMat = new THREE.MeshLambertMaterial({color:0xeeeeee,transparent:true,opacity:0.05})
+		var oCantainer = new THREE.Mesh(oCantainerGeo,oCantainerMat)
+		oCantainer.position.set(0,0,0)
+		// Four points on the center of the four sides on the midplane of the container
+		var pA = new THREE.Mesh(new THREE.CubeGeometry(0,0,0),new THREE.MeshBasicMaterial())
+		pA.position.set(3,0,0)
+		var pB = new THREE.Mesh(new THREE.CubeGeometry(0,0,0),new THREE.MeshBasicMaterial())
+		pB.position.set(0,0,3)
+		var pC = new THREE.Mesh(new THREE.CubeGeometry(0,0,0),new THREE.MeshBasicMaterial())
+		pC.position.set(-3,0,0)
+		var pD = new THREE.Mesh(new THREE.CubeGeometry(0,0,0),new THREE.MeshBasicMaterial())
+		pD.position.set(0,0,-3)
+		window.p=pA
+		oCantainer.add(plane,pA,pB,pC,pD)
+
+		// Clone container to hold castShape
+		var newoCan = oCantainer.clone();
+
+		// Create Russian Cube
+		var russianCube = new RussianCube()
+		oCantainer.add(russianCube)
+		// A timer polls if the previous Russian Cube is settled, Set to load next
+		setInterval(function(){
+			if(!russianCube.moving){
+				russianCube = new RussianCube()
+				oCantainer.add(russianCube)
+			}
+		},1000)
+
+		// Fraction
+		var score = 0
+		var pause = false
+		var castShape = false
+
+		// mouse roll container
+		document.onmousedown = function(e){
+			var radius = Math.pow(camera.position.x,2)+Math.pow(camera.position.y,2)+Math.pow(camera.position.z,2)
+			var startX= 0,startY= 0
+			document.onmousemove = function(e){
+				if(e.clientX-startX>0){
+					oCantainer.rotation.y += 0.08
+					newoCan.rotation.y += 0.08	
+				}else if(e.clientX-startX<0){
+					oCantainer.rotation.y -= 0.08
+					newoCan.rotation.y -= 0.08
+				}
+				if(e.clientY-startY>0){
+					camera.position.y+=0.6
+					if(radius-Math.pow(camera.position.y,2)<1){
+						camera.position.y=Math.pow((radius-1),0.5)
+					}
+					camera.position.x=Math.pow((radius-Math.pow(camera.position.y,2))/2,0.5)
+					camera.position.z=Math.pow((radius-Math.pow(camera.position.y,2))/2,0.5)
+					camera.lookAt(new THREE.Vector3(0,0,0))
+				}else if(e.clientY-startY<0){
+					camera.position.y-=0.6
+					if(Math.pow(camera.position.y,2)<1){
+						camera.position.y=1
+					}
+					camera.position.x=Math.pow((radius-Math.pow(camera.position.y,2))/2,1/2)
+					camera.position.z=Math.pow((radius-Math.pow(camera.position.y,2))/2,1/2)
+					camera.lookAt(new THREE.Vector3(0,0,0))
+				}
+				// visual follow
+				pA.z = -Math.sin(oCantainer.rotation.y)
+				pA.x = Math.cos(oCantainer.rotation.y)
+				pB.z = -Math.sin(oCantainer.rotation.y-Math.PI*0.5)
+				pB.x = Math.cos(oCantainer.rotation.y-Math.PI*0.5)
+				pC.z = -Math.sin(oCantainer.rotation.y-Math.PI)
+				pC.x = Math.cos(oCantainer.rotation.y-Math.PI)
+				pD.z = -Math.sin(oCantainer.rotation.y-Math.PI*1.5)
+				pD.x = Math.cos(oCantainer.rotation.y-Math.PI*1.5)
+				var arr = [pA,pB,pC,pD]
+				arr.forEach(function(p){
+					if(p.x>=0&&p.z>=0){
+						window.p=p
+					}
+				})
+
+				startX = e.clientX
+				startY = e.clientY
+			}
+			document.onmouseup = function(){
+				document.onmousemove = null
+			}
+		}
+
+		// touch to rotate container
+		document.addEventListener('touchstart',function(e){
+			var radius = Math.pow(camera.position.x,2)+Math.pow(camera.position.y,2)+Math.pow(camera.position.z,2)
+			var startX= 0,startY= 0;
+			function move(e){
+				if(e.touches[0].clientX-startX>0){
+					oCantainer.rotation.y += 0.08
+					newoCan.rotation.y += 0.08	
+				}else if(e.touches[0].clientX-startX<0){
+					oCantainer.rotation.y -= 0.08
+					newoCan.rotation.y -= 0.08
+				}
+				if(e.touches[0].clientY-startY>0){
+					camera.position.y+=0.6
+					if(radius-Math.pow(camera.position.y,2)<1){
+						camera.position.y=Math.pow((radius-1),0.5)
+					}
+					camera.position.x=Math.pow((radius-Math.pow(camera.position.y,2))/2,0.5)
+					camera.position.z=Math.pow((radius-Math.pow(camera.position.y,2))/2,0.5)
+					camera.lookAt(new THREE.Vector3(0,0,0))
+				}else if(e.touches[0].clientY-startY<0){
+					camera.position.y-=0.6
+					if(Math.pow(camera.position.y,2)<1){
+						camera.position.y=1
+					}
+					camera.position.x=Math.pow((radius-Math.pow(camera.position.y,2))/2,1/2)
+					camera.position.z=Math.pow((radius-Math.pow(camera.position.y,2))/2,1/2)
+					camera.lookAt(new THREE.Vector3(0,0,0))
+				}
+
+				// visual follow
+				pA.z = -Math.sin(oCantainer.rotation.y)
+				pA.x = Math.cos(oCantainer.rotation.y)
+				pB.z = -Math.sin(oCantainer.rotation.y-Math.PI*0.5)
+				pB.x = Math.cos(oCantainer.rotation.y-Math.PI*0.5)
+				pC.z = -Math.sin(oCantainer.rotation.y-Math.PI)
+				pC.x = Math.cos(oCantainer.rotation.y-Math.PI)
+				pD.z = -Math.sin(oCantainer.rotation.y-Math.PI*1.5)
+				pD.x = Math.cos(oCantainer.rotation.y-Math.PI*1.5)
+				var arr = [pA,pB,pC,pD]
+				arr.forEach(function(p){
+					if(p.x>=0&&p.z>=0){
+						window.p=p
+					}
+				})
+				startX = e.touches[0].clientX
+				startY = e.touches[0].clientY
+			}
+			document.addEventListener('touchmove',move)
+			document.addEventListener('touchend',function(e){
+				document.removeEventListener('touchmove',move)
+			})
+		})
+
+		// Web button binding event key
+		arr.forEach(function(el,index){
+			el.onclick = function(e){
+				e.key=keys[index]
+				russianCube.moveCtrl(e,window.p)
+			}
+		})
+
+		// keyboard control
+		document.onkeydown = function(e){
+			russianCube.moveCtrl(e,window.p)
+		}
+		
+		// Create a light source
+		var light = new THREE.DirectionalLight()
+		light.position.set(3,2,1)
+
+		// Coordinate Assistant
+		// var axis = new THREE.AxisHelper(200)
+		scene.add(camera,oCantainer,newoCan,light)
+
+		// Create a renderer
+		var renderer = new THREE.WebGLRenderer({ antialias: true })
+		renderer.setSize(window.innerWidth, window.innerHeight*0.72)
+		renderer.setClearColor(0x33a3dc,0.5);  
+
+		// render
+		var canvas = document.querySelector("#canvas");
+		canvas.append(renderer.domElement)
+		function render(){
+				requestAnimationFrame(render)
+				renderer.render(scene,camera)
+		}
+		render()
+		
+	</script>
+</body>
+</html>
